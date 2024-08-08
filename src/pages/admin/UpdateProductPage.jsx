@@ -5,6 +5,9 @@ import { Timestamp, doc, getDoc, setDoc } from "firebase/firestore";
 import { fireDB } from "../../firebase/FirebaseConfig";
 import toast from "react-hot-toast";
 import Loader from "../../components/loader/Loader";
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+
+
 
 const categoryList = [
     {
@@ -36,7 +39,7 @@ const categoryList = [
 const UpdateProductPage = () => {
     const context = useContext(myContext);
     const { loading, setLoading, getAllProductFunction } = context;
-
+    const [file, setFile] = useState(null)
     const navigate = useNavigate();
     const { id } = useParams()
     console.log(id)
@@ -57,6 +60,21 @@ const UpdateProductPage = () => {
             }
         )
     });
+
+    const handleFileChange = (e) => {
+        setFile(e.target.files[0])
+    }
+
+
+    const uploadImageAndGetUrl = async (file) => {
+
+        const storage = getStorage();
+        const storageRef = ref(storage, `product/${file.name}`)
+        await uploadBytes(storageRef, file)
+        const url = await getDownloadURL(storageRef)
+        return url;
+    }
+
 
 
     const getSingleProductFunction = async () => {
@@ -82,8 +100,13 @@ const UpdateProductPage = () => {
     const updateProduct = async () => {
         setLoading(true)
         try {
+            let imageUrl = product.productImageUrl
+            if (file) {
+                imageUrl = await uploadImageAndGetUrl(file)
+            }
 
-            await setDoc(doc(fireDB, 'products', id), product)
+            await setDoc(doc(fireDB, 'products', id), { ...product, productImageUrl: imageUrl })
+
             toast.success("Product Updated successfully")
             getAllProductFunction();
             setLoading(false)
@@ -144,15 +167,9 @@ const UpdateProductPage = () => {
 
                     <div className="mb-3">
                         <input
-                            type="text"
-                            name="productImageUrl"
-                            value={product.productImageUrl}
-                            onChange={(e) => {
-                                setProduct({
-                                    ...product,
-                                    productImageUrl: e.target.value
-                                })
-                            }}
+                            type="file"
+                            onChange={handleFileChange}
+
                             placeholder='Product Image Url'
                             className='bg-pink-50 border text-pink-300 border-pink-200 px-2 py-2 w-96 rounded-md outline-none placeholder-pink-300'
                         />
